@@ -1,0 +1,81 @@
+#gamepanel-container {
+    /*background-color: red;*/
+    display: flex;
+    width: 2000px;
+    /*width: 50%;*/
+    flex-direction: column;
+}
+
+#gamepanel-container .search-container {
+    padding-top: 25px;
+    width: 100%;
+    height: 50px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 50px;
+    /*background-color: red;*/
+}
+
+#game-previews {
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    display: flex;
+    /*width: 330px;*/
+}
+
+.game-preview {
+    background-color: coral;
+    margin-bottom: 5px;
+    width: 311px;
+    padding: 15px;
+}
+
+.game-sheet {
+    display: flex;
+    align-items: center;
+    flex-direction: row;
+    justify-content: space-evenly;
+    background-color: bisque;
+}
+
+.player-table {
+    margin-left: -10px;
+    border-spacing: 10px 3px;
+}
+
+/* checkbox */
+.waiverbox {
+    width: 15px;
+    height: 15px;
+    background-color: white;
+}
+
+.waiverbox.checked {
+    width: 15px;
+    height: 15px;
+    /*width: 50px;*/
+    /*height: 50px;*/
+    background-color: darkgreen;
+}
+
+.teams {
+    display: flex;
+    /*width: 100%;*/
+    /*background-color: red;*/
+    justify-content: space-between;
+    width: 1100px;
+    flex-direction: row;
+}
+
+.teams .score {
+    appearance: textfield;
+    width: 50px;
+    border-width: 0px;
+}
+
+.score:focus {
+    outline: none;
+}

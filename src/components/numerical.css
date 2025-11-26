@@ -1,0 +1,8 @@
+.numerical {
+    /*background-color: black;*/
+    border: none;
+}
+
+.numerical:focus {
+    outline: none;
+}

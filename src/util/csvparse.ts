@@ -20,13 +20,13 @@ const parseValue = (value: string) => {
   }
 };
 
-export const parseCSV = (
+export const csvParse = (
   csvContent: string,
   delimiter: string = ",",
-  shouldParse: string = "",
+  shouldParse: boolean = true,
   shouldLog: boolean = true,
   lastLineBlank: boolean = true,
-) => {
+): any[] => {
   if (shouldLog) {
     console.log(`RAW CONTENT:\n${csvContent}`);
   }

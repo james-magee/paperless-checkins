@@ -1,25 +1,128 @@
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-}
-
+/*#app {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 2rem;
+    text-align: center;
+}*/
+/*
 .logo {
-  height: 6em;
-  padding: 1.5em;
+    height: 6em;
+    padding: 1.5em;
 }
 .logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
+    filter: drop-shadow(0 0 2em #646cffaa);
 }
 .logo.preact:hover {
-  filter: drop-shadow(0 0 2em #673ab8aa);
+    filter: drop-shadow(0 0 2em #673ab8aa);
 }
 
 .card {
-  padding: 2em;
+    padding: 2em;
 }
 
 .read-the-docs {
-  color: #888;
+    color: #888;
+}*/
+
+/* hmm... */
+#skipgamesheets-button {
+    padding-top: 2px;
+    padding-bottom: 2px;
+    padding-left: 5px;
+    padding-right: 5px;
+    border-radius: 2px;
+}
+
+.hoverfeature:hover {
+    cursor: grab;
+    opacity: 0.8;
+    background-color: maroon;
+}
+
+/* whole-app styling */
+#app-container {
+    background-color: white;
+    font-family: Arial, Helvetica, sans-serif;
+    /*width: 100vw;
+    height: 100vh;*/
+}
+
+.search-container input {
+    background-color: white;
+    color: black;
+    border: none;
+    outline: none;
+    padding: 5px;
+    width: 300px;
+}
+
+#playerview-resultsarea {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    /*width: 200px;*/
+}
+
+.playercardpreview {
+    margin-bottom: 5px;
+    display: flex;
+    flex-direction: row;
+    background-color: slategray;
+    height: 50px;
+    width: 310px;
+    /*width: 100%;*/
+}
+
+.playercard {
+    display: flex;
+    flex-direction: row;
+    margin-bottom: 5px;
+    height: 150px;
+    width: 310px;
+    background-color: thistle;
+    font-weight: 800;
+    color: darkslategray;
+}
+
+.playercard .fixed-info {
+    flex-direction: column;
+}
+
+.playercard .field {
+    flex-direction: column;
+}
+
+.playercard .waiverbox {
+    width: 50px;
+    height: 50px;
+    background-color: white;
+}
+
+.playercard .waiverbox.checked {
+    width: 50px;
+    height: 50px;
+    background-color: darkgreen;
+}
+
+.field {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 3px;
+}
+
+.field-label {
+    font-size: 12px;
+    margin-left: 1px;
+    font-style: italic;
+    font-weight: 500;
+}
+
+.field-value {
+    margin-top: -7px;
+}
+
+.checkbox {
+    flex-direction: column;
 }
