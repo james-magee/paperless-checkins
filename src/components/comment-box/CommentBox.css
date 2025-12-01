@@ -1,0 +1,12 @@
+.comment-box {
+    resize: none;
+    outline: none;
+    border: none;
+
+    margin-bottom: 50px;
+}
+/*
+.comment-box:active {
+    outline: none;
+    border: none;
+}*/

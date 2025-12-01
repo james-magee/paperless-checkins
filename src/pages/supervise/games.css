@@ -34,9 +34,10 @@
 }
 
 .game-sheet {
+    width: 100%;
     display: flex;
     align-items: center;
-    flex-direction: row;
+    flex-direction: column;
     justify-content: space-evenly;
     background-color: bisque;
 }
@@ -44,6 +45,9 @@
 .player-table {
     margin-left: -10px;
     border-spacing: 10px 3px;
+    border-collapse: separate;
+    background-color: bisque;
+    position: relative;
 }
 
 /* checkbox */
@@ -78,4 +82,11 @@
 
 .score:focus {
     outline: none;
+}
+
+/* game information */
+.game-info {
+    width: fit-content;
+    margin-left: 140px;
+    margin-bottom: 50px;
 }

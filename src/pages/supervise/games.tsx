@@ -1,9 +1,15 @@
-import type { Manager, Game, Team, Player } from "../../util/manager";
+import type { Manager } from "../../util/manager";
+import type { Game, Team, Player, Tier } from "../../types/game";
+import { GameManager } from "../../types/game";
 import { useState, useEffect, useRef } from "preact/hooks";
 import type { JSX, RefObject } from "preact";
 import "./games.css";
 import { NumericalInput } from "../../components/Numerical";
 import type React from "preact/compat";
+import { CommentBox } from "../../components/comment-box/CommentBox";
+import { AddPlayerButton } from "../../components/add-player/AddPlayer";
+import { StudentNumberInput } from "../../components/stu-num-input/StudentNumberInput";
+import { StudentNameInput } from "../../components/stu-name-input/StudentNameInput";
 
 // the game sheet will only be shown if there is a single result.
 export const GamePanel = ({
@@ -16,7 +22,7 @@ export const GamePanel = ({
   setFocused: () => void;
 }) => {
   const [searchString, setSearchString] = useState<string>("");
-  const [searchResults, setSearchResults] = useState<Game[]>([]);
+  const [searchResults, setSearchResults] = useState<GameManager[]>([]);
   const searchRef = useRef<HTMLInputElement>(null);
 
   // TODO: implement the complicated "back-state" idea here
@@ -71,7 +77,7 @@ const GamePreview = ({
   game,
   onClick,
 }: {
-  game: Game;
+  game: GameManager;
   onClick: () => void;
 }) => {
   return (
@@ -83,30 +89,55 @@ const GamePreview = ({
   );
 };
 
-const GameSheet = ({ game }: { game: Game }) => {
+const GameSheet = ({ game }: { game: GameManager }) => {
   const [homeScore, setHomeScore] = useState<number | null>(null);
   const [awayScore, setAwayScore] = useState<number | null>(null);
+  const [homeTeam, setHomeTeam] = useState<Team>(game.home_team);
+  const [awayTeam, setAwayTeam] = useState<Team>(game.away_team);
+
+  useEffect(() => {
+    setHomeScore(game.home_score);
+    setAwayScore(game.away_score);
+    setHomeTeam(game.home_team);
+    setAwayTeam(game.away_team);
+  }, [game]);
 
   const updateHomeScore = (score: number | null) => {
-    game.home_score = score;
+    game.home_score = score ?? -1;
     setHomeScore(score);
   };
 
   const updateAwayScore = (score: number | null) => {
-    game.away_score = score;
+    game.away_score = score ?? -1;
     setAwayScore(score);
   };
 
   return (
     <div class="game-sheet">
+      {/* game information */}
+      <div
+        style={{
+          display: "flex",
+          width: "100%",
+          flexDirection: "row",
+          justifyContent: "left",
+        }}
+      >
+        <GameInformation game={game} />
+      </div>
+      {/* teams data entry */}
       <div class="teams">
         <TeamArea
-          team={game.home_team}
+          gameManager={game}
+          team={homeTeam}
+          whichTeam="home"
           score={homeScore}
           updateScore={updateHomeScore}
         />
         <TeamArea
-          team={game.away_team}
+          gameManager={game}
+          team={awayTeam}
+          whichTeam="away"
           score={awayScore}
           updateScore={updateAwayScore}
         />
@@ -115,96 +146,224 @@ const GameSheet = ({ game }: { game: Game }) => {
   );
 };
 
+type PlayerAtGame = Player & { signedIn: boolean };
+
 const TeamArea = ({
+  gameManager,
+  whichTeam,
   team,
   score,
   updateScore,
 }: {
+  gameManager: GameManager;
+  whichTeam: "home" | "away";
   team: Team;
   score: number | null;
   updateScore: (score: number | null) => void;
 }) => {
-  // const playerRefMap = new Map<Player, RefObject<HTMLDivElement>>();
-  // for (const player of team.players) {
-  //   playerRefMap.set(player, useRef<HTMLDivElement>(null));
-  // }
+  const teamRef = useRef<Team>(team);
 
-  // const togglePlayerSignedIn = (p: Player) => {
-  //   p.signed_in = !p.signed_in;
-  //   const ref = playerRefMap.get(p);
-  //   const cstr = p.signed_in ? "waiverbox checked" : "waiverbox";
-  //   ref!.current!.style = "background-color: black";
-  //   console.log("HELLO?");
-  //   console.log(ref);
-  //   ref!.current!.base;
-  //   ref!.current!.className = cstr;
-  // };
+  // NOTES:
+  //
+  // this is not entirely "reactive" UI; e.g., we are imperatively updating the
+  // data and the component state separetely in a kind of MVVM fashion. The REASON
+  // doing it this way could make sense is to avoid re-rendering the entire component
+  // tree.
 
-  const playerSignInState = new Map();
-  for (const player of team.players) {
-    console.log("HERE");
-    playerSignInState.set(player, useState<boolean>(player.signed_in));
-  }
+  // these objects exist only here; e.g., multiple sources of truth. Not ideal for robustness but is faster.
+  const [localPlayers, setLocalplayers] = useState<
+    (Player & { signedIn: boolean })[]
+  >(gameManager.addSignedInField(whichTeam));
 
-  const signedIn = (p: Player) => playerSignInState.get(p)[0];
+  const togglePlayerSignIn = (player: Player) => {
+    // data update
+    const checkedIn = gameManager.toggleCheckedIn(player);
 
-  const handleSignInToggle = (p: Player) => {
-    p.signed_in = !p.signed_in;
-    const [_, setState] = playerSignInState.get(p);
-    setState(p.signed_in);
+    // view update
+    setLocalplayers((prev) =>
+      prev.map((p: Player & { signedIn: boolean }) =>
+        p.id === player.id ? { ...p, signedIn: checkedIn } : p,
+      ),
+    );
   };
 
-  // // multiple useEffects, or a single useEffect for all values?
-  // useEffect(() => {
+  // CommentBox state
+  const [comments, setComments] =
+    whichTeam === "home"
+      ? useState(gameManager.home_comments)
+      : useState(gameManager.away_comments);
+  const updateComments = (content: string) => {
+    if (whichTeam === "home") {
+      gameManager.home_comments = content;
+    } else {
+      gameManager.away_comments = content;
+    }
+    setComments(content);
+  };
 
-  // }, Array.from(playerSignInState.values()));
+  // addPlayer
+  const studentNumberInput = useRef<HTMLInputElement>(null);
+  const [addingNewPlayer, setAddingNewPlayer] = useState(false);
+  const beginAddNewPlayer = () => {
+    setAddingNewPlayer(true);
+  };
+
+  // change state whenever the game changes
+  useEffect(() => {
+    // ensure players are not stale
+    // const players = gameManager.addSignedInField(whichTeam);
+    if (team != teamRef.current) {
+      setLocalplayers(gameManager.addSignedInField(whichTeam));
+    }
+
+    if (team != teamRef.current) {
+      if (whichTeam === "home") {
+        setComments(gameManager.home_comments ?? "");
+      } else {
+        setComments(gameManager.away_comments ?? "");
+      }
+    }
+
+    teamRef.current = team;
+  }, [team]);
+
+  const togglePlayerWaiver = (player: Player) => {
+    const waiverSigned = gameManager.toggleWaiverSigned(whichTeam, player);
+    setLocalplayers((prev) =>
+      prev.map((p) =>
+        p.id === player.id ? { ...p, waiver_signed: waiverSigned } : p,
+      ),
+    );
+  };
 
   return (
     <div class="team-panel">
       {/* header area */}
       <div>
-        <span>Home Team</span>
+        <span>{whichTeam === "home" ? "Home Team" : "Away Team"}</span>
         <span style={{ marginLeft: 10, fontWeight: 800 }}>{team.name}</span>
       </div>
+
       {/* table area */}
-      <table class={"player-table"}>
+      <table class={"player-table"} style={{ zIndex: 10 }}>
         <thead>
           <tr>
             <th>{"Signed in"}</th>
             <th>{"Student Number"}</th>
             <th>{"Student Name"}</th>
-            <th>{"Waiver Signed"}</th>
+            <th>{"Waiver"}</th>
           </tr>
         </thead>
         <tbody>
-          {team.players.map((p) => {
+          {localPlayers.map((p) => {
             return (
               <tr>
                 <td style={{ display: "flex", flexDirection: "row" }}>
                   <span style={{ width: 25, marginRight: 5 }}>
-                    {signedIn(p) ? "yes" : "no"}
+                    {p.signedIn ? "yes" : "no"}
                   </span>
                   <Checkbox
                     label=""
-                    checked={signedIn(p)}
-                    toggle={() => handleSignInToggle(p)}
+                    checked={p.signedIn}
+                    toggle={() => togglePlayerSignIn(p)}
                   />
                 </td>
                 <td>{p.student_number}</td>
                 <td>{p.student_name}</td>
-                <td>{p.waiver_signed ? "yes" : "no"}</td>
+                <td style={{ display: "flex", flexDirection: "row" }}>
+                  <span style={{ width: 25, marginRight: 5 }}>
+                    {p.waiver_signed ? "yes" : "no"}
+                  </span>
+                  <Checkbox
+                    label=""
+                    checked={p.waiver_signed}
+                    toggle={() => togglePlayerWaiver(p)}
+                  />
+                </td>
               </tr>
             );
           })}
         </tbody>
       </table>
+      {addingNewPlayer && (
+        <table
+          style={{
+            backgroundColor: "lightblue",
+            zIndex: 2,
+            marginTop: -24,
+            paddingTop: 5,
+          }}
+          class={"player-table"}
+        >
+          <thead style={{ height: 0.5, opacity: 0 }}>
+            <th>{"Signed in"}</th>
+            <th>{"Student Number"}</th>
+            <th>{"Student Name"}</th>
+            <th>{"Waiver"}</th>
+          </thead>
+          <tbody>
+            <NewPlayerRow />
+          </tbody>
+        </table>
+      )}
+
+      {/* add-player btn */}
+      <div style={{ opacity: addingNewPlayer ? 0.2 : 1 }}>
+        <AddPlayerButton
+          disabled={!addingNewPlayer}
+          onClick={beginAddNewPlayer}
+        />
+      </div>
+
       {/* score area */}
-      <div>
+      <div style={{ marginTop: 10 }}>
+        <div>Score</div>
         <NumericalInput value={score} setValue={updateScore} />
       </div>
 
       {/* comments area */}
+      <div style={{ marginTop: 10 }}>
+        <div>Comments</div>
+        <CommentBox
+          content={comments ?? ""}
+          onChange={updateComments}
+          placeholder="here"
+        />
+      </div>
     </div>
+  );
+};
+
+const NewPlayerRow = ({}) => {
+  const [waiver, setWaiver] = useState(false);
+  const [signedin, setSignedin] = useState(false);
+
+  return (
+    <tr style={{ backgroundColor: "lightblue" }}>
+      <td style={{ display: "flex", flexDirection: "row" }}>
+        <span style={{ width: 25, marginRight: 5 }}>{"no"}</span>
+        <Checkbox label="" checked={waiver} toggle={() => setWaiver(!waiver)} />
+      </td>
+      <td>
+        <StudentNumberInput onChange={() => {}} />
+      </td>
+      <td>
+        <StudentNameInput onChange={() => {}} />
+      </td>
+      <td style={{ display: "flex", flexDirection: "row" }}>
+        <span style={{ width: 25, marginRight: 5 }}>{"no"}</span>
+        <Checkbox
+          label=""
+          checked={signedin}
+          toggle={() => {
+            setSignedin(!signedin);
+          }}
+        />
+      </td>
+      {/*<td style={{ background: "none" }}>
+        <Checkbox label="" checked={false} toggle={() => {}} />
+      </td>*/}
+    </tr>
   );
 };
 
@@ -226,6 +385,59 @@ const Checkbox = ({
         onClick={toggle}
         className={checked ? "waiverbox checked" : "waiverbox"}
       ></div>
+    </div>
+  );
+};
+
+const GameInformation = ({ game }: { game: Game }) => {
+  return (
+    <div class="game-info">
+      <div style={{ fontWeight: 500 }}>Game Information</div>
+      <table>
+        <thead></thead>
+        <tbody>
+          <tr>
+            <td>Time:</td>
+            <td>
+              <i style={{ marginLeft: 10, color: "navy", fontWeight: 600 }}>
+                {game.play_time}
+              </i>
+            </td>
+          </tr>
+          <tr>
+            <td>Tier:</td>
+            <td>
+              <i style={{ marginLeft: 10, color: "navy", fontWeight: 600 }}>
+                {game.tier}
+              </i>
+            </td>
+          </tr>
+          <tr>
+            <td>Home:</td>
+            <td>
+              <i style={{ marginLeft: 10, color: "navy", fontWeight: 600 }}>
+                {game.home_team.name}
+              </i>
+            </td>
+          </tr>
+          <tr>
+            <td>Away:</td>
+            <td>
+              <i style={{ marginLeft: 10, color: "navy", fontWeight: 600 }}>
+                {game.away_team.name}
+              </i>
+            </td>
+          </tr>
+          <tr>
+            <td>Location:</td>
+            <td>
+              <i style={{ marginLeft: 10, color: "navy", fontWeight: 600 }}>
+                {game.field_name}
+              </i>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "preact/hooks";
-import type { JSX, Ref } from "preact";
+import type { ComponentProps, JSX, Ref } from "preact";
 import "./numerical.css";
 
 const stringify = (n: number | null): string => {
@@ -12,17 +12,16 @@ const numeric = (s: string | null): boolean => {
   return !Number.isNaN(Number(s));
 };
 
-export const NumericalInput = ({
-  value,
-  setValue,
-}: {
-  value: number | null;
-  setValue: (val: number | null) => void;
-}) => {
+export interface NumericalInputProps extends ComponentProps<"input"> {
+  currentValue: number | null;
+  updateValue: (newVal: number | null) => void;
+}
+
+export const NumericalInput = (props: NumericalInputProps) => {
   const validateInput = (event: InputEvent) => {
     event.preventDefault();
     if (event.inputType === "deleteSoftLineBackward") {
-      setValue(null);
+      props.updateValue(null);
       return;
     }
 
@@ -32,31 +31,33 @@ export const NumericalInput = ({
 
     const input =
       event.inputType === "deleteContentBackward" ? "\b" : event.data;
-    const str = stringify(value);
+    const str = stringify(props.currentValue);
     if (input === "\b") {
       if (str === "") return;
       const substr = str.substring(0, str.length - 1);
       if (substr.length === 0) {
-        setValue(null);
+        props.updateValue(null);
         return;
       }
       const num = Number(substr);
-      setValue(num);
+      props.updateValue(num);
     }
     if (numeric(input)) {
       const num = Number(str + input);
-      if (Number.isNaN(num)) setValue(null);
-      setValue(num);
+      if (Number.isNaN(num)) props.updateValue(null);
+      props.updateValue(num);
     }
   };
 
   return (
-    <div>
+    <div style={{ maxWidth: 100 }}>
       <input
-        value={value ?? ""}
+        style={props.style}
+        value={props.currentValue ?? ""}
         type="text"
         class="numerical"
         onBeforeInput={validateInput}
+        {...props}
       ></input>
     </div>
   );

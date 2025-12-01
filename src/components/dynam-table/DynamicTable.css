@@ -1,0 +1,15 @@
+.dyntab {
+    background-color: white;
+}
+
+tr:nth-child(odd) {
+    background-color: lightblue;
+}
+
+tr:nth-child(even) {
+    background-color: lightcoral;
+}
+/*
+tr:last-child {
+    background-color: bisque;
+}*/

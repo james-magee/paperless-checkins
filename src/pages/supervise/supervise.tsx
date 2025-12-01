@@ -1,8 +1,6 @@
-import type { Manager, Player } from "../../util/manager";
+import type { Manager } from "../../util/manager";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { GamePanel } from "./games";
-import { PlayerPanel } from "./players";
-import "./supervise.css";
 
 const SHOULD_LOG = true;
 const log = (content: string) => {

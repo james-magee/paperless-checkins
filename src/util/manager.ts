@@ -1,42 +1,52 @@
 import { gameA, gameB } from "./default";
 import { similarity } from "./sim";
+import type { Game as GameData, Player, RawGameType } from "../types/game";
+import { GameManager as Game } from "../types/game";
 
-type Tier = "Womens" | "Mixed1" | "Mixed2A" | "Mixed2B" | "Open1" | "Open2";
-type Score = number | null;
+// type Tier = "Womens" | "Mixed1" | "Mixed2A" | "Mixed2B" | "Open1" | "Open2";
 
 // players might be duplicated a few times if they play on multiple teams
 // which isn't an issue
 // - in a very space-efficient relation database, we'd probably have a table for unique players
 //   and a player_team column that links the player and team, but this isn't necessary here.
-export interface Player {
-  student_number: string;
-  student_name: string;
-  waiver_signed: boolean;
-  team_name: string;
-  team_tier: string;
-  team_id: string;
-  signed_in: boolean;
-}
+// export interface Player {
+//   student_number: string;
+//   student_name: string;
+//   waiver_signed: boolean;
+//   team_name: string;
+//   team_tier: string;
+//   team_id: string;
+//   signed_in: boolean;
+// }
 
-export interface Team {
-  tier?: Tier;
-  name: string;
-  players: Player[];
-}
+// export interface Team {
+//   tier?: Tier;
+//   name: string;
+//   players: Player[];
+// }
 
-export interface Game {
-  tier: Tier;
-  play_time: string;
-  field_name: string;
-  home_team: Team;
-  home_score: Score;
-  home_mvp: Player | null;
-  away_team: Team;
-  away_score: Score;
-  away_mvp: Player | null;
+// export interface Game {
+//   // Game Information
+//   id: string | null;
+//   tier: Tier;
+//   play_time: string;
+//   field_name: string;
+//   comments: string | null;
 
-  id: string;
-}
+//   // Home Team Information
+//   home_team: Team;
+//   home_players_present: Player[];
+//   home_score: number;
+//   home_mvp: Player | null;
+//   home_comments: string | null;
+
+//   // Away Team Information
+//   away_team: Team;
+//   away_players_present: Player[];
+//   away_score: number;
+//   away_mvp: Player | null;
+//   away_comments: string | null;
+// }
 
 const GAME_ID = (g: Game | Omit<Game, "id">) =>
   `${g.play_time} ${g.tier} ${g.home_team} ${g.away_team}`;
@@ -152,7 +162,14 @@ const findGamesFactory = (
           [s, g]
         ),
       )
-      .filter(([sim]): boolean => sim > threshold)
+      .filter(([sim]): boolean => {
+        if (sim >= 1.0) {
+          threshold = 1.0;
+          return true;
+        } else {
+          return sim > threshold;
+        }
+      })
       .sort(([s1, _], [s2, __]) => (s1 > s2 ? -1 : 1))
       .map(([, g]) => g)
       .sort((g1, g2) => (g1.play_time > g2.play_time ? 1 : -1))
@@ -182,19 +199,19 @@ const findGamesFactory = (
 //   return findGames;
 // };
 
-export const createManagerFromSheet = (sheet: Player[]): Manager => {
-  const players = sheet !== null ? sheet : [];
-  const findPlayers = findPlayersFactory(players);
-  return { findPlayers };
-};
+// export const createManagerFromSheet = (sheet: Player[]): Manager => {
+//   const players = sheet !== null ? sheet : [];
+//   const findPlayers = findPlayersFactory(players);
+//   return { findPlayers };
+// };
 
-const createManagerFromGames = (games: Omit<Game, "id">[]): Manager => {
+const createManagerFromGames = (games: RawGameType[]): Manager => {
   const players = games
     .map((g) => g.home_team.players.concat(g.away_team.players))
     .flat(1);
-  const gamesWithId = games.map((g) => ({ ...g, id: GAME_ID(g) }));
+  const gameManagers = games.map((g) => new Game(g));
   const findPlayers = findPlayersFactory(players);
-  const findGames = findGamesFactory(gamesWithId);
+  const findGames = findGamesFactory(gameManagers);
   return { findPlayers, findGames };
 };
 
