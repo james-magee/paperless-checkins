@@ -2,6 +2,7 @@ import type { StateUpdater, Dispatch } from "preact/hooks";
 import { NumericalInput } from "../Numerical";
 import "./DynamicTable.css";
 import { useEffect, useState, useRef } from "preact/hooks";
+import { memo } from "preact/compat";
 import type { ComponentProps, TargetedEvent } from "preact";
 
 export type AllowedFieldType = string | number | boolean | null;
@@ -32,24 +33,61 @@ export const DynamicTable = ({
 }) => {
   // data --- eventually get via hook or something else
   const [rows, setRows] = useState(data);
-
   const hstrs = fields.map((h) => String(h.name));
 
+  // update data
+  const [autoFocusAt, setAutoFocusAt] = useState<{
+    index: number;
+    field: TabularField;
+  } | null>(null);
+  const dataUpdater = (field: TabularField, index: number) => {
+    const updater = (field: TabularField, data: TabularData) => {
+      setAutoFocusAt({ index: index, field: field });
+      setRows((prev) => [
+        ...prev.slice(0, index),
+        data,
+        ...prev.slice(index + 1),
+      ]);
+    };
+    return updater;
+  };
+
   // adding new player state
-  const [addingRow, setAddingRow] = useState(false);
-  const [insertData, setInsertData] = useState<{
-    [key: string]: AllowedFieldType;
-  }>(Object.fromEntries(fields.map((f) => [f.name, null])));
+  const emptyObject: TabularData = Object.fromEntries(
+    fields.map((f) => [f.name, null]),
+  );
+  const [insertData, setInsertData] = useState(emptyObject);
   const updateInsertData = (field: TabularField, entry: AllowedFieldType) => {
     setInsertData((prevData) => ({ ...prevData, [field.name]: entry }));
   };
-  const addRow = (row: TabularData) => {
-    setAddingRow(false);
-    setRows((prevRows) => [...prevRows, row]);
+  const addRow = () => {
+    setRows((prevRows) => [...prevRows, insertData]);
+    setInsertData(emptyObject);
   };
+
+  // check if all required fields have been entered
+  const newRowCompleted = () => {
+    return !fields.some(
+      (field) => field.required && insertData[field.name] === null,
+    );
+  };
+
+  // event listener
+  useEffect(() => {
+    const addNewRowHandler = (event: KeyboardEvent) => {
+      if (event.key !== "Enter") return;
+      if (newRowCompleted()) addRow();
+    };
+    window.addEventListener("keydown", addNewRowHandler);
+    return () => {
+      window.removeEventListener("keydown", addNewRowHandler);
+    };
+  }, [insertData]);
 
   // question: how can we add a row without re-rendering everything? maybe it's OK
   // answer: it *is* OK.
+
+  const MemoizedRow = memo(Row);
 
   return (
     <table class="dyntab">
@@ -61,15 +99,33 @@ export const DynamicTable = ({
         </tr>
       </thead>
       <tbody>
-        {rows.map((rowData) => (
-          <Row fields={fields} data={rowData} />
+        {rows.map((rowObj, index) => (
+          <tr key={index}>
+            {fields.map((field) => (
+              <TextCell
+                field={field}
+                content={rowObj[field.name] as string}
+                onContentChange={(v) => dataUpdater(index, field)}
+              />
+            ))}
+          </tr>
         ))}
+        {/*{rows.map((rowData, index) => (
+          <MemoizedRow
+            autoFocusAt={
+              autoFocusAt && autoFocusAt.index === index ? autoFocusAt : null
+            }
+            key={index}
+            fields={fields}
+            data={rowData}
+            updateRowData={rowUpdater(index)}
+          />
+        ))}*/}
         <InserterRow
           onCellActivate={() => {}}
           fields={fields}
-          updateData={updateInsertData}
+          updateCellData={updateInsertData}
           data={insertData}
-          addRow={addRow}
         />
       </tbody>
     </table>
@@ -83,35 +139,14 @@ const Header = ({ name }: { name: string }) => {
 interface RowProps extends ComponentProps<"tr"> {
   fields: TabularField[];
   data: TabularData;
+  updateRowData?: (field: TabularField, newData: TabularData) => void;
+  autoFocusAt?: { index: number; field: TabularField } | null;
 }
 
 const Row = (props: RowProps) => {
-  // const dataRef = useRef<TabularData>(dataObject);
-  // const oldRef = useRef<TabularData | null>(null);
-  // const localState = new Map<
-  //   string,
-  //   [AllowedFieldType, Dispatch<StateUpdater<AllowedFieldType>>]
-  // >();
-
-  // if (oldRef.current === null || dataObject === oldRef.current)
-  //   fields
-  //     .filter((field) => field !== null)
-  //     .forEach((field) =>
-  //       localState.set(field.name, useState(dataObject[field.name])),
-  //     );
-
-  // if (dataObject != dataRef.current) {
-  //   oldRef.current = dataRef.current;
-  //   dataRef.current = dataObject;
-  // }
-
-  // // if (!localState.has(field.name)) return <></>;
-  // // const [val, setval] = localState.get(field.name)!;
-  // // if (typeof val != "number") return <></>;
-
-  // // useEffect(() => {
-  // //   // run only on mount
-  // // }, []);
+  const updateData = (field: TabularField, value: AllowedFieldType) => {
+    props.updateRowData?.(field, { ...props.data, [field.name]: value });
+  };
 
   return (
     <tr>
@@ -119,19 +154,28 @@ const Row = (props: RowProps) => {
         if (field.type === "number")
           return (
             <NumericalCell
+              autoFocus={props.autoFocusAt?.field.name == field.name}
               field={field}
-              entry={props.data[field.name] as number}
+              content={props.data[field.name] as number}
+              onContentChange={(v) => updateData(field, v)}
             />
           );
         if (field.type === "string")
           return (
-            <TextCell field={field} entry={props.data[field.name] as string} />
+            <TextCell
+              autoFocus={props.autoFocusAt?.field.name == field.name}
+              field={field}
+              content={props.data[field.name] as string}
+              onContentChange={(v) => updateData(field, v)}
+            />
           );
         if (field.type === "boolean")
           return (
             <BooleanCell
+              // autoFocus={props.autoFocusAt?.field.name == field.name}
               field={field}
-              entry={props.data[field.name] as boolean}
+              content={props.data[field.name] as boolean}
+              onContentChange={(v) => updateData(field, v)}
             />
           );
       })}
@@ -141,29 +185,26 @@ const Row = (props: RowProps) => {
 
 interface CellProps<T> extends ComponentProps<"input"> {
   field: TabularField;
-  entry: T;
-  onContentChange?: (newContent: T) => void;
-  content?: T;
+  onContentChange?: (newContent: T | null) => void;
+  content?: T | null;
 }
 
 const BooleanCell = (props: CellProps<boolean>) => {
   return (
     <>
       <div>{props.field.name}</div>
-      <div>{props.entry}</div>
+      <div>{props.content}</div>
     </>
   );
 };
 
 const NumericalCell = (props: CellProps<number>) => {
-  const [val, setVal] = useState<number | null>(props.entry);
-
   return (
     <td>
       <NumericalInput
         style={{ backgroundColor: "rgba(0,0,0,0)" }}
-        currentValue={val}
-        updateValue={(newVal) => setVal(newVal)}
+        currentValue={props.content ?? null}
+        updateValue={(newVal) => props.onContentChange?.(newVal)}
         {...props}
       />
     </td>
@@ -171,29 +212,25 @@ const NumericalCell = (props: CellProps<number>) => {
 };
 
 const TextCell = (props: CellProps<string>) => {
-  const [val, setVal] = useState<string | null>(props.entry);
-
   return (
     <td>
       <input
+        value={props.content ?? ""}
         style={{
           backgroundColor: "rgba(0,0,0,0)",
           outline: "none",
           border: "none",
           maxWidth: 100,
         }}
-        onChange={(e) => setVal(e.currentTarget.value)}
-      >
-        {val}
-      </input>
+        onChange={(event) => props.onContentChange?.(event.currentTarget.value)}
+      ></input>
     </td>
   );
 };
 
 interface InserterRowProps extends RowProps {
   onCellActivate: () => void;
-  updateData: (field: TabularField, entry: AllowedFieldType) => void;
-  addRow: (row: TabularData) => void;
+  updateCellData: (field: TabularField, entry: AllowedFieldType) => void;
 }
 
 /**
@@ -202,27 +239,6 @@ interface InserterRowProps extends RowProps {
  * @returns
  */
 const InserterRow = (props: InserterRowProps) => {
-  const [active, setActive] = useState(false);
-
-  // input for each entry
-  const [items, setItems] = useState(Object.values(props.data));
-  const completed = () =>
-    !props.fields.some(
-      (field, index) => field.required && items[index] !== null,
-    );
-
-  // move to parent element
-  useEffect(() => {
-    const handleEnter = (e: KeyboardEvent) => {
-      if (e.key !== "Enter") return;
-      // check if all fields have been entered correctly
-      if (completed()) {
-      }
-    };
-
-    window.addEventListener("keypress", handleEnter);
-  }, []);
-
   return (
     <tr
       style={{
@@ -233,27 +249,26 @@ const InserterRow = (props: InserterRowProps) => {
         if (field.type === "number")
           return (
             <NumericalCell
-              onContentChange={(v) => props.updateData(field, v)}
-              onKeyDown={(event) => console.log(event.key)}
+              content={props.data[field.name] as number}
+              onContentChange={(v) => props.updateCellData(field, v)}
               onFocus={props.onCellActivate}
               field={field}
-              entry={props.data[field.name] as number}
             />
           );
         if (field.type === "string")
           return (
             <TextCell
-              onContentChange={(v) => props.updateData(field, v)}
+              content={props.data[field.name] as string}
+              onContentChange={(v) => props.updateCellData(field, v)}
               field={field}
-              entry={props.data[field.name] as string}
             />
           );
         if (field.type === "boolean")
           return (
             <BooleanCell
-              onContentChange={(v) => props.updateData(field, v)}
+              onContentChange={(v) => props.updateCellData(field, v)}
+              content={props.data[field.name] as boolean}
               field={field}
-              entry={props.data[field.name] as boolean}
             />
           );
       })}

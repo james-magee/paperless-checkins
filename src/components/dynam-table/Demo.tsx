@@ -6,6 +6,7 @@ const DEMO_FIELDS: TabularField[] = [
     name: "name",
     type: "string",
     editable: true,
+    required: true,
   },
   {
     name: "age",
