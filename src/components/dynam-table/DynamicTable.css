@@ -1,13 +1,13 @@
 .dyntab {
-    background-color: white;
+    /*background-color: white;*/
 }
 
-tr:nth-child(odd) {
-    background-color: lightblue;
+.dyntab tr:nth-child(odd) {
+    background-color: darkgray;
 }
 
-tr:nth-child(even) {
-    background-color: lightcoral;
+.dyntab tr:nth-child(even) {
+    background-color: bisque;
 }
 /*
 tr:last-child {

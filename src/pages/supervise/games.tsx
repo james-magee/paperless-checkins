@@ -10,6 +10,12 @@ import { CommentBox } from "../../components/comment-box/CommentBox";
 import { AddPlayerButton } from "../../components/add-player/AddPlayer";
 import { StudentNumberInput } from "../../components/stu-num-input/StudentNumberInput";
 import { StudentNameInput } from "../../components/stu-name-input/StudentNameInput";
+import { DynamicTable } from "../../components/dynam-table/DynamicTable";
+import type {
+  AllowedFieldType,
+  TabularData,
+  TabularField,
+} from "../../components/dynam-table/DynamicTable";
 
 // the game sheet will only be shown if there is a single result.
 export const GamePanel = ({
@@ -236,6 +242,31 @@ const TeamArea = ({
     );
   };
 
+  // reactful variant
+  const dataUpdater = (
+    index: number,
+    field: TabularField,
+    entry: AllowedFieldType,
+  ) => {
+    debugger;
+
+    if (entry === "") entry = null;
+    const newLocalPlayers = [
+      ...localPlayers.slice(0, index),
+      { ...localPlayers[index], [field.name]: entry },
+      ...localPlayers.slice(index + 1),
+    ];
+    gameManager.update(whichTeam, newLocalPlayers);
+    setLocalplayers(newLocalPlayers);
+  };
+
+  const dataAdder = (addedData: TabularData) => {
+    const newPlayer = addedData as unknown as Player & { signedIn: boolean };
+    const newLocalPlayers = [...localPlayers, newPlayer];
+    gameManager.update(whichTeam, newLocalPlayers);
+    setLocalplayers(newLocalPlayers);
+  };
+
   return (
     <div class="team-panel">
       {/* header area */}
@@ -245,7 +276,39 @@ const TeamArea = ({
       </div>
 
       {/* table area */}
-      <table class={"player-table"} style={{ zIndex: 10 }}>
+      <DynamicTable
+        dataAdd={dataAdder}
+        dataUpdate={dataUpdater}
+        fields={[
+          {
+            name: "signedIn",
+            headerLabel: "Signed In",
+            type: "boolean",
+            editable: true,
+          },
+          {
+            name: "student_number",
+            headerLabel: "Student Number",
+            type: "string",
+            editable: true,
+          },
+          {
+            name: "student_name",
+            headerLabel: "Student Name",
+            type: "string",
+            editable: true,
+          },
+          {
+            name: "waiver_signed",
+            headerLabel: "Waiver",
+            type: "boolean",
+            editable: true,
+          },
+        ]}
+        data={localPlayers}
+      />
+
+      {/*<table class={"player-table"} style={{ zIndex: 10 }}>
         <thead>
           <tr>
             <th>{"Signed in"}</th>
@@ -305,20 +368,20 @@ const TeamArea = ({
             <NewPlayerRow />
           </tbody>
         </table>
-      )}
+      )}*/}
 
       {/* add-player btn */}
-      <div style={{ opacity: addingNewPlayer ? 0.2 : 1 }}>
+      {/*<div style={{ opacity: addingNewPlayer ? 0.2 : 1 }}>
         <AddPlayerButton
           disabled={!addingNewPlayer}
           onClick={beginAddNewPlayer}
         />
-      </div>
+      </div>*/}
 
       {/* score area */}
       <div style={{ marginTop: 10 }}>
         <div>Score</div>
-        <NumericalInput value={score} setValue={updateScore} />
+        <NumericalInput currentValue={score} updateValue={updateScore} />
       </div>
 
       {/* comments area */}

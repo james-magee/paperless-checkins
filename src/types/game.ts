@@ -74,6 +74,11 @@ class PlayerNotFoundException extends Error {
   }
 }
 
+export interface PlayerAttendance {
+  player: Player;
+  present: boolean;
+}
+
 /**
  * Used to safely update parts of a Game; not used to load in game sheets, etc.
  */
@@ -88,6 +93,7 @@ export class GameManager implements Game {
   // Home Team Information
   home_team: Team;
   home_players_signed_in: Player[];
+  home_attendance: PlayerAttendance[];
   home_score: Score;
   home_mvp: Player | null;
   home_comments: string | null;
@@ -95,6 +101,7 @@ export class GameManager implements Game {
   // Away Team Information
   away_team: Team;
   away_players_signed_in: Player[];
+  away_attendance: PlayerAttendance[];
   away_score: Score;
   away_mvp: Player | null;
   away_comments: string | null;
@@ -108,15 +115,61 @@ export class GameManager implements Game {
 
     this.home_team = gameObject.home_team;
     this.home_players_signed_in = [];
+    this.home_attendance = this.home_team.players.map((p) => ({
+      player: p,
+      present: false,
+    }));
     this.home_score = gameObject.home_score;
     this.home_mvp = gameObject.home_mvp;
     this.home_comments = gameObject.home_comments ?? null;
 
     this.away_team = gameObject.away_team;
     this.away_players_signed_in = [];
+    this.away_attendance = this.away_team.players.map((p) => ({
+      player: p,
+      present: false,
+    }));
     this.away_score = gameObject.away_score;
     this.away_mvp = gameObject.away_mvp;
     this.away_comments = gameObject.away_comments ?? null;
+  }
+
+  // Main update
+
+  update(
+    whichTeam: "home" | "away",
+    sheet: (Player & { signedIn: boolean })[],
+  ): void {
+    const team = whichTeam === "home" ? this.home_team : this.away_team;
+    // const attendance = whichTeam === "home" ? this.home_attendance : this.away_attendance;
+    // const ps =
+    //   whichTeam === "home"
+    //     ? this.home_players_signed_in
+    //     : this.away_players_signed_in;
+
+    // iterate through players and make sure they're up to date
+
+    // add new players, do updates
+    team.players = sheet.map((obj) => ({ ...obj }));
+
+    if (whichTeam === "home") {
+      this.home_attendance = sheet.map((obj) => ({
+        player: { ...obj },
+        present: obj.signedIn,
+      }));
+    } else if (whichTeam === "away") {
+      this.away_attendance = sheet.map((obj) => ({
+        player: { ...obj },
+        present: obj.signedIn,
+      }));
+    }
+
+    // for (let i = 0; i < team.players.length; i++) {
+    //   const playerObject = { ...sheet[i] };
+    //   team.players.push(playerObject);
+    // }
+
+    // assume they have same indices
   }
 
   // Player Methods
@@ -169,13 +222,26 @@ export class GameManager implements Game {
   }
 
   addSignedInField(team: "home" | "away"): (Player & { signedIn: boolean })[] {
-    const allPlayers =
-      team === "home" ? this.home_team.players : this.away_team.players;
-    const signedInPlayers =
-      team === "home"
-        ? this.home_players_signed_in
-        : this.away_players_signed_in;
-    const signedIn = new Set<string>(signedInPlayers.map((p) => p.id));
-    return allPlayers.map((p) => ({ ...p, signedIn: signedIn.has(p.id) }));
+    // TODO: phase all of this out...
+    if (team === "home")
+      return this.home_attendance.map((att) => ({
+        ...att.player,
+        signedIn: att.present,
+      }));
+    else if (team === "away")
+      return this.away_attendance.map((att) => ({
+        ...att.player,
+        signedIn: att.present,
+      }));
+    else throw Error(`team argument: ${team} must be one of: home, away`);
+
+    // const allPlayers =
+    //   team === "home" ? this.home_team.players : this.away_team.players;
+    // const signedInPlayers =
+    //   team === "home"
+    //     ? this.home_players_signed_in
+    //     : this.away_players_signed_in;
+    // const signedIn = new Set<string>(signedInPlayers.map((p) => p.id));
+    // return allPlayers.map((p) => ({ ...p, signedIn: signedIn.has(p.id) }));
   }
 }

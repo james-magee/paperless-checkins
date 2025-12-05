@@ -22,7 +22,7 @@ const PAGES = {
 };
 
 export function App() {
-  const [page, setPage] = useState(PAGES.TEMP);
+  const [page, setPage] = useState(PAGES.SUPERVISE);
   const [manager, setManager] = useState<Manager>(
     defaultManager,
     // createManager(
