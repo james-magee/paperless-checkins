@@ -1,55 +1,7 @@
 import { gameA, gameB } from "./default";
 import { similarity } from "./sim";
-import type { Game as GameData, Player, RawGameType } from "../types/game";
+import type { Player, RawGameType } from "../types/game";
 import { GameManager as Game } from "../types/game";
-
-// type Tier = "Womens" | "Mixed1" | "Mixed2A" | "Mixed2B" | "Open1" | "Open2";
-
-// players might be duplicated a few times if they play on multiple teams
-// which isn't an issue
-// - in a very space-efficient relation database, we'd probably have a table for unique players
-//   and a player_team column that links the player and team, but this isn't necessary here.
-// export interface Player {
-//   student_number: string;
-//   student_name: string;
-//   waiver_signed: boolean;
-//   team_name: string;
-//   team_tier: string;
-//   team_id: string;
-//   signed_in: boolean;
-// }
-
-// export interface Team {
-//   tier?: Tier;
-//   name: string;
-//   players: Player[];
-// }
-
-// export interface Game {
-//   // Game Information
-//   id: string | null;
-//   tier: Tier;
-//   play_time: string;
-//   field_name: string;
-//   comments: string | null;
-
-//   // Home Team Information
-//   home_team: Team;
-//   home_players_present: Player[];
-//   home_score: number;
-//   home_mvp: Player | null;
-//   home_comments: string | null;
-
-//   // Away Team Information
-//   away_team: Team;
-//   away_players_present: Player[];
-//   away_score: number;
-//   away_mvp: Player | null;
-//   away_comments: string | null;
-// }
-
-const GAME_ID = (g: Game | Omit<Game, "id">) =>
-  `${g.play_time} ${g.tier} ${g.home_team} ${g.away_team}`;
 
 export const isPlayer = (o: any): o is Player => {
   // TODO: change to team_id
@@ -70,7 +22,7 @@ export const isPlayerArray = (o: any[]): o is Player[] => {
 };
 
 export interface Manager {
-  findPlayers: (input: string) => Player[];
+  findPlayers: (input: string) => Player[]; // not in use
   findGames: (input: string) => Game[];
 }
 
@@ -109,7 +61,7 @@ const findPlayersFactory = (
   return findPlayers;
 };
 
-// THOUGHT: maybe the threshold should change depend on the probable number of fields that
+// TODO:    maybe the threshold should change depend on the probable number of fields that
 //          are being entered.
 const findGamesFactory = (
   games: Game[],
@@ -129,27 +81,18 @@ const findGamesFactory = (
   });
 
   const findGames = (query: string): Game[] => {
-    // first, check if it is a formal search up
     if (query.length < 1) return [];
-
     try {
-      const [time, tier, homeTeamName, awayTeamName] = query.split(" ");
-      if (timeGameMap.has(time)) {
-        const res = timeGameMap
-          ?.get(time)
-          ?.filter(
-            (g) =>
-              g.home_team.name === homeTeamName &&
-              g.away_team.name === awayTeamName &&
-              g.home_team.tier === tier &&
-              g.away_team.tier === tier,
-          );
-        if (res!.length > 1) {
-          console.log("Shouldn't have duplicate games...");
-        }
-        if (res!.length === 1) {
-          return res!;
-        }
+      const [time, tier, homeTeamName, awayTeamName] = query.split("  ");
+      const game = timeGameMap.get(time);
+      if (game !== undefined) {
+        return game.filter(
+          (g) =>
+            g.home_team.name === homeTeamName &&
+            g.away_team.name === awayTeamName &&
+            g.home_team.tier === tier &&
+            g.away_team.tier === tier,
+        );
       }
     } catch {}
 
@@ -177,33 +120,6 @@ const findGamesFactory = (
   };
   return findGames;
 };
-
-// const findGamesFactory = (games: Game[]): ((searchStr: string) => Game[]) => {
-//   const findGames = (searchStr: string): Game[] => {
-//     if (searchStr.length <= 0) return [];
-//     searchStr = searchStr.toLowerCase();
-//     const matchingGames = new Set<Game>();
-//     // find games by home team
-//     const stendsWith = (s: string) =>
-//       s.startsWith(searchStr) || s.endsWith(searchStr);
-//     games
-//       .filter((g) => stendsWith(g.home_team.name.toLowerCase()))
-//       .forEach((g) => matchingGames.add(g));
-//
-//     // find games by away team
-//     games
-//       .filter((g) => stendsWith(g.away_team.name.toLowerCase()))
-//       .forEach((g) => matchingGames.add(g));
-//     return Array.from(matchingGames);
-//   };
-//   return findGames;
-// };
-
-// export const createManagerFromSheet = (sheet: Player[]): Manager => {
-//   const players = sheet !== null ? sheet : [];
-//   const findPlayers = findPlayersFactory(players);
-//   return { findPlayers };
-// };
 
 const createManagerFromGames = (games: RawGameType[]): Manager => {
   const players = games

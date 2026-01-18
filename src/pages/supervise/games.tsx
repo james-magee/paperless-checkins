@@ -2,14 +2,10 @@ import type { Manager } from "../../util/manager";
 import type { Game, Team, Player, Tier } from "../../types/game";
 import { GameManager } from "../../types/game";
 import { useState, useEffect, useRef } from "preact/hooks";
-import type { JSX, RefObject } from "preact";
+import type { JSX } from "preact";
 import "./games.css";
 import { NumericalInput } from "../../components/Numerical";
-import type React from "preact/compat";
 import { CommentBox } from "../../components/comment-box/CommentBox";
-import { AddPlayerButton } from "../../components/add-player/AddPlayer";
-import { StudentNumberInput } from "../../components/stu-num-input/StudentNumberInput";
-import { StudentNameInput } from "../../components/stu-name-input/StudentNameInput";
 import { DynamicTable } from "../../components/dynam-table/DynamicTable";
 import type {
   AllowedFieldType,
@@ -31,22 +27,25 @@ export const GamePanel = ({
   const [searchResults, setSearchResults] = useState<GameManager[]>([]);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  // TODO: implement the complicated "back-state" idea here
-
   useEffect(() => {
     if (focused) searchRef?.current?.focus();
   }, [focused]);
 
-  useEffect(() => {
-    setSearchResults(manager.findGames(searchString));
-    // TODO: good learning moment -> the
-    console.log("GAME RESULTS FROM: ", searchString, searchResults);
-  }, [searchString]);
+  // useEffect(() => {
+  //   window.addEventListener("keydown", runSearchHandler);
+  //   return () => window.removeEventListener("keydown", runSearchHandler);
+  // }, [searchString]);
+
+  // const runSearchHandler = (event: KeyboardEvent) => {
+  //   if (event.key !== "Enter") return;
+  //   setSearchResults(manager.findGames(searchString));
+  // };
 
   const setResult = (g: Game) => {
-    setSearchString(
-      `${g.play_time} ${g.tier} ${g.home_team.name} ${g.away_team.name}`,
-    );
+    const searchString = `${g.play_time}  ${g.tier}  ${g.home_team.name}  ${g.away_team.name}`;
+    // we don't necessarily need to do this
+    // setSearchString(searchString);
+    setSearchResults(manager.findGames(searchString));
   };
 
   return (
@@ -57,9 +56,13 @@ export const GamePanel = ({
           onFocus={setFocused}
           ref={searchRef}
           type="text"
-          onChange={(event: JSX.TargetedEvent<HTMLInputElement, Event>) =>
-            setSearchString(event.currentTarget.value)
-          }
+          onKeyDown={(event: KeyboardEvent) => {
+            if (event.key !== "Enter") return;
+            setSearchResults(manager.findGames(searchString));
+          }}
+          onChange={(event: JSX.TargetedEvent<HTMLInputElement, Event>) => {
+            setSearchString(event.currentTarget.value);
+          }}
           value={searchString}
         ></input>
       </div>
@@ -152,8 +155,6 @@ const GameSheet = ({ game }: { game: GameManager }) => {
   );
 };
 
-type PlayerAtGame = Player & { signedIn: boolean };
-
 const TeamArea = ({
   gameManager,
   whichTeam,
@@ -168,30 +169,9 @@ const TeamArea = ({
   updateScore: (score: number | null) => void;
 }) => {
   const teamRef = useRef<Team>(team);
-
-  // NOTES:
-  //
-  // this is not entirely "reactive" UI; e.g., we are imperatively updating the
-  // data and the component state separetely in a kind of MVVM fashion. The REASON
-  // doing it this way could make sense is to avoid re-rendering the entire component
-  // tree.
-
-  // these objects exist only here; e.g., multiple sources of truth. Not ideal for robustness but is faster.
   const [localPlayers, setLocalplayers] = useState<
     (Player & { signedIn: boolean })[]
   >(gameManager.addSignedInField(whichTeam));
-
-  const togglePlayerSignIn = (player: Player) => {
-    // data update
-    const checkedIn = gameManager.toggleCheckedIn(player);
-
-    // view update
-    setLocalplayers((prev) =>
-      prev.map((p: Player & { signedIn: boolean }) =>
-        p.id === player.id ? { ...p, signedIn: checkedIn } : p,
-      ),
-    );
-  };
 
   // CommentBox state
   const [comments, setComments] =
@@ -207,17 +187,8 @@ const TeamArea = ({
     setComments(content);
   };
 
-  // addPlayer
-  const studentNumberInput = useRef<HTMLInputElement>(null);
-  const [addingNewPlayer, setAddingNewPlayer] = useState(false);
-  const beginAddNewPlayer = () => {
-    setAddingNewPlayer(true);
-  };
-
   // change state whenever the game changes
   useEffect(() => {
-    // ensure players are not stale
-    // const players = gameManager.addSignedInField(whichTeam);
     if (team != teamRef.current) {
       setLocalplayers(gameManager.addSignedInField(whichTeam));
     }
@@ -232,15 +203,6 @@ const TeamArea = ({
 
     teamRef.current = team;
   }, [team]);
-
-  const togglePlayerWaiver = (player: Player) => {
-    const waiverSigned = gameManager.toggleWaiverSigned(whichTeam, player);
-    setLocalplayers((prev) =>
-      prev.map((p) =>
-        p.id === player.id ? { ...p, waiver_signed: waiverSigned } : p,
-      ),
-    );
-  };
 
   // reactful variant
   const dataUpdater = (
@@ -393,61 +355,6 @@ const TeamArea = ({
           placeholder="here"
         />
       </div>
-    </div>
-  );
-};
-
-const NewPlayerRow = ({}) => {
-  const [waiver, setWaiver] = useState(false);
-  const [signedin, setSignedin] = useState(false);
-
-  return (
-    <tr style={{ backgroundColor: "lightblue" }}>
-      <td style={{ display: "flex", flexDirection: "row" }}>
-        <span style={{ width: 25, marginRight: 5 }}>{"no"}</span>
-        <Checkbox label="" checked={waiver} toggle={() => setWaiver(!waiver)} />
-      </td>
-      <td>
-        <StudentNumberInput onChange={() => {}} />
-      </td>
-      <td>
-        <StudentNameInput onChange={() => {}} />
-      </td>
-      <td style={{ display: "flex", flexDirection: "row" }}>
-        <span style={{ width: 25, marginRight: 5 }}>{"no"}</span>
-        <Checkbox
-          label=""
-          checked={signedin}
-          toggle={() => {
-            setSignedin(!signedin);
-          }}
-        />
-      </td>
-      {/*<td style={{ background: "none" }}>
-        <Checkbox label="" checked={false} toggle={() => {}} />
-      </td>*/}
-    </tr>
-  );
-};
-
-const Checkbox = ({
-  label,
-  checked,
-  toggle,
-  ...props
-}: {
-  label: string;
-  checked: boolean;
-  toggle: () => void;
-} & React.ComponentProps<"div">) => {
-  return (
-    <div className="checkbox">
-      <div className="field-label">{label}</div>
-      <div
-        ref={props.ref}
-        onClick={toggle}
-        className={checked ? "waiverbox checked" : "waiverbox"}
-      ></div>
     </div>
   );
 };
